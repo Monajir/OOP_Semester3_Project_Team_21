@@ -70,6 +70,12 @@ private:
     Texture2D coinsHeartsTexture;
     Texture2D obeliskTexture;
 
+    // Music 
+
+    Music titleMusic;
+    Music gameplayMusic;
+    Music gameOverMusic;
+
     std::string playerName;
     bool scoreRecorded;
     std::vector<ScoreEntry> scoreboard; // Holds all score records
@@ -85,4 +91,5 @@ public:
     void UpdateScoreboardRecord();
     void InitGameObjects();
     void UpdateGame();
+    void UpdateMusic();
 };

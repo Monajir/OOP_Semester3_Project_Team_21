@@ -7,11 +7,11 @@ Game::Game() :  currentScreen(LOGO), scrollingOne(0), scrollingTwo(0), scrolling
                 maxObeliskTime(20), attackOrbTimeCounter(0), maxAttOrbTime(6.5f),
                 maxAttackTime(10), gameSpeed(0), coinCount(0), heartCount(0)
 {
-    startRect = {600, 180, static_cast<float>(screenWidth/6), 30};
-    exitRect = {600, 300, static_cast<float>(screenWidth/6), 30};
-    scoreBoardRect = {600, 240, static_cast<float>(screenWidth/6), 30}; 
+    startRect = {600, 100, static_cast<float>(screenWidth/6), 30}; // 180
+    exitRect = {600, 220, static_cast<float>(screenWidth/6), 30}; // 300
+    scoreBoardRect = {600, 160, static_cast<float>(screenWidth/6), 30}; // 240
     restartRect = { static_cast<float>(screenWidth/2 - 4*Constants::UNIT),
-            static_cast<float>(screenHeight/2 + 2*Constants::UNIT + 60),
+            static_cast<float>(screenHeight/2 + 2*Constants::UNIT), // + 60
             static_cast<float>(screenWidth/6 + 2*Constants::UNIT), 30 };
 
     enemies.resize(Constants::MAX_ENEMY);
@@ -59,9 +59,12 @@ void Game::UpdateScoreboardRecord() {
 }
 
 void Game::Init() {
-    SetConfigFlags(FLAG_FULLSCREEN_MODE); // For Full Screen Mode. Kinda forcing full screen
+    // SetConfigFlags(FLAG_FULLSCREEN_MODE); // For Full Screen Mode. Kinda forcing full screen
     InitWindow(screenWidth, screenHeight, "Amaterasu OOP Game");
-    
+
+    /// Audio init 
+    InitAudioDevice();
+
     // Load textures
     playerTexture = LoadTexture("Assests/NightBorne/NightBorne.png");
     enemyTexture1 = LoadTexture("Assests/Dark VFX 1/DarkVFX(Rev).png");
@@ -77,6 +80,12 @@ void Game::Init() {
     bgFive = LoadTexture("Assests/Parallex Bgs/Clouds prallex Bg/Clouds 8/5.png");
     bgSix = LoadTexture("Assests/Parallex Bgs/Clouds prallex Bg/Clouds 8/6.png");
     
+
+    // Loading music files
+    titleMusic   = LoadMusicStream("Assests/mp3/Light Ambience 3.mp3");
+    gameplayMusic = LoadMusicStream("Assests/mp3/Action_1.mp3");
+    gameOverMusic = LoadMusicStream("Assests/mp3/Ambient 1.mp3");
+
     // Set textures for entities
     player.SetTexture(&playerTexture);
     for(auto &enemy : enemies) {
@@ -253,7 +262,7 @@ void Game::Run() {
                     currentScreen = GAMEPLAY;
                 }
                 mousePos = GetMousePosition();
-                Rectangle backRect = {600, 300, static_cast<float>(screenWidth/6), 30};
+                Rectangle backRect = {600, 220, static_cast<float>(screenWidth/6), 30};
                 if(CheckCollisionPointRec(mousePos, backRect) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
                     currentScreen = TITLE;
                 break;
@@ -292,7 +301,7 @@ void Game::Run() {
             case SCOREBOARD: {
                     mousePos = GetMousePosition();
                     // Back button in Scoreboard screen
-                    Rectangle backRect = {600, 300, static_cast<float>(screenWidth/6), 30};
+                    Rectangle backRect = {600,220, static_cast<float>(screenWidth/6), 30};
                     if(CheckCollisionPointRec(mousePos, backRect) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
                         currentScreen = TITLE;
                     break;
@@ -314,7 +323,9 @@ void Game::Run() {
                 }
                 break;
         }
-        
+        // Calling music update
+        UpdateMusic();
+
         BeginDrawing();
         ClearBackground(RAYWHITE);
         switch(currentScreen) {
@@ -404,14 +415,15 @@ void Game::Run() {
                     // Rectangle restartRect = { static_cast<float>(screenWidth/2 - 4*Constants::UNIT),
                     //                           static_cast<float>(screenHeight/2 + 2*Constants::UNIT),
                     //                           static_cast<float>(screenWidth/6 + 2*Constants::UNIT), 30 };
-                    DrawRectangle(restartRect.x, restartRect.y - 60, restartRect.width, restartRect.height, BLACK);
-                    DrawText("RESTART", restartRect.x + 15, restartRect.y - 60, 30, WHITE);
+                    DrawRectangle(restartRect.x, restartRect.y, restartRect.width, restartRect.height, BLACK);
+                    DrawText("RESTART", restartRect.x + 15, restartRect.y, 30, WHITE);
                     DrawText("Game Over", screenWidth/2 - 5*Constants::UNIT, screenHeight/2 - 2*Constants::UNIT, 2*Constants::UNIT, BLACK);
                 }
                 break;
             case ENDING:
                 DrawRectangle(0, 0, screenWidth, screenHeight, WHITE);
-                DrawText("CLOSING THE GAME", 20, 20, 40, GRAY);
+                DrawText("Closing the game", 20, 20, 30, GRAY);
+                DrawText("closing all game files...", 20, 80, 10, BLACK);
                 break;
         }
         EndDrawing();
@@ -428,6 +440,13 @@ void Game::Run() {
     UnloadTexture(obeliskTexture);
     UnloadTexture(enemyTexture1);
     UnloadTexture(enemyTexture2);
+
+    //Unloading Music files
+    UnloadMusicStream(titleMusic);
+    UnloadMusicStream(gameplayMusic);
+    UnloadMusicStream(gameOverMusic);
+    CloseAudioDevice();
+
     CloseWindow();
 }
 
@@ -569,3 +588,60 @@ void Game::UpdateGame() {
         }
     }
 }
+
+void Game::UpdateMusic() {
+    // Remember the last screen to detect a change
+    static GameScreen lastScreen = LOGO;
+    
+    // If the screen has changed, stop the previous music
+    if (currentScreen != lastScreen) {
+        switch(lastScreen) {
+            case TITLE:
+                if(currentScreen != SCOREBOARD) {
+                    StopMusicStream(titleMusic);
+                }
+                break;
+            case SCOREBOARD:
+                if(currentScreen != TITLE) {
+                    StopMusicStream(titleMusic);
+                }
+                break;
+            case GAMEPLAY:
+                StopMusicStream(gameplayMusic);
+                break;
+            case GAMEOVER:
+                StopMusicStream(gameOverMusic);
+                break;
+            // Add additional cases if you have more screens with music
+            default:
+                break;
+        }
+        lastScreen = currentScreen;
+    }
+    
+    // Update music based on the current screen
+    switch(currentScreen) {
+        case TITLE:
+        case SCOREBOARD:
+            if (!IsMusicStreamPlaying(titleMusic)) {
+                PlayMusicStream(titleMusic);
+            }
+            UpdateMusicStream(titleMusic);
+            break;
+        case GAMEPLAY:
+            if (!IsMusicStreamPlaying(gameplayMusic)){
+                PlayMusicStream(gameplayMusic);
+            }
+            UpdateMusicStream(gameplayMusic);
+            break;
+        case GAMEOVER:
+            if (!IsMusicStreamPlaying(gameOverMusic)) {
+                PlayMusicStream(gameOverMusic);
+            }
+            UpdateMusicStream(gameOverMusic);
+            break;
+        default:
+            break;
+    }
+}
+
